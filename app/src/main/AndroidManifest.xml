@@ -1,28 +1,494 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+package com.drc.caddiecommand
 
-    <application
-        android:allowBackup="true"
-        android:label="Caddie Command"
-        android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
-        android:usesCleartextTraffic="false">
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
+private val Navy = Color(0xFF101B30)
+private val Gold = Color(0xFFD5B56D)
+private val White = Color(0xFFF5F6F8)
+private val Green = Color(0xFF248B61)
+private val Red = Color(0xFFD84C50)
+private val Yellow = Color(0xFFF5D44B)
+private val Panel = Color(0xFF26354E)
 
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                CaddieCommandApp()
+            }
+        }
+    }
+}
 
-        </activity>
+@Composable
+fun CaddieCommandApp() {
+    var entered by remember { mutableStateOf(false) }
+    var hole by remember { mutableIntStateOf(1) }
+    var route by remember { mutableStateOf("SAFE") }
+    var tab by remember { mutableStateOf("HOLE") }
+    val scores = remember {
+        mutableStateListOf<Int>().apply {
+            repeat(18) { add(5) }
+        }
+    }
 
-    </application>
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Navy)
+            .safeDrawingPadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        if (!entered) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "CADDIE COMMAND",
+                    color = Gold,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "YOUR COURSE. YOUR STRATEGY. YOUR EDGE.",
+                    color = White,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(36.dp))
+                ActionButton(
+                    title = "ENTER",
+                    selected = true,
+                    modifier = Modifier.fillMaxWidth()
+                ) { entered = true }
+            }
+        } else {
+            Text(
+                "CADDIE COMMAND",
+                color = Gold,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "YOUR COURSE. YOUR STRATEGY. YOUR EDGE.",
+                color = White,
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-</manifest>
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                listOf("HOLE", "CADDIE", "SCORE", "BAG").forEach { name ->
+                    ActionButton(
+                        title = name,
+                        selected = tab == name,
+                        modifier = Modifier.weight(1f)
+                    ) { tab = name }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                when (tab) {
+                    "HOLE" -> {
+                        Text(
+                            "HOLE $hole  |  PAR 5",
+                            color = Gold,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+
+                        Text(
+                            "DEMO MAP — NOT LIVE COURSE DATA",
+                            color = White,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+
+                        BoxWithConstraints(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val narrow = maxWidth < 340.dp
+                            if (narrow) {
+                                Column(
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(8.dp)
+                                ) {
+                                    HoleMap(
+                                        route,
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(350.dp)
+                                    )
+                                    DataPanels(
+                                        Modifier.fillMaxWidth(),
+                                        horizontal = true
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    horizontalArrangement =
+                                        Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(390.dp)
+                                ) {
+                                    HoleMap(
+                                        route,
+                                        Modifier.weight(1.7f)
+                                            .fillMaxHeight()
+                                    )
+                                    DataPanels(
+                                        Modifier.weight(1f)
+                                            .fillMaxHeight(),
+                                        horizontal = false
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement =
+                                Arrangement.spacedBy(8.dp)
+                        ) {
+                            ActionButton(
+                                "SAFE",
+                                route == "SAFE",
+                                Modifier.weight(1f),
+                                Yellow
+                            ) { route = "SAFE" }
+
+                            ActionButton(
+                                "ATTACK",
+                                route == "ATTACK",
+                                Modifier.weight(1f),
+                                Red
+                            ) { route = "ATTACK" }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ActionButton("PREV", false) {
+                                if (hole > 1) hole--
+                            }
+                            Text(
+                                "$hole / 18",
+                                color = Gold,
+                                fontWeight = FontWeight.Bold
+                            )
+                            ActionButton("NEXT", false) {
+                                if (hole < 18) hole++
+                            }
+                        }
+                    }
+
+                    "CADDIE" -> {
+                        SectionTitle("YOUR CADDIE")
+                        InfoPanel("COURSE", "NOT SELECTED")
+                        InfoPanel("GPS", "NOT CONNECTED")
+                        InfoPanel("WIND", "NOT CONNECTED")
+                        InfoPanel("CLUB ADVICE", "AWAITING LIVE DATA")
+                        InfoPanel("VOICE", "NOT CONNECTED")
+                        Text(
+                            "Live course information is required " +
+                                "before shot recommendations can be made.",
+                            color = White,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    "SCORE" -> {
+                        SectionTitle("SCORECARD")
+                        Text(
+                            "Hole $hole",
+                            color = White,
+                            fontSize = 19.sp
+                        )
+                        Row(
+                            horizontalArrangement =
+                                Arrangement.spacedBy(18.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ActionButton("-", false) {
+                                if (scores[hole - 1] > 1) {
+                                    scores[hole - 1]--
+                                }
+                            }
+                            Text(
+                                "${scores[hole - 1]}",
+                                color = Gold,
+                                fontSize = 32.sp
+                            )
+                            ActionButton("+", false) {
+                                if (scores[hole - 1] < 20) {
+                                    scores[hole - 1]++
+                                }
+                            }
+                        }
+                        Text(
+                            "Scores are temporary and are not " +
+                                "saved after closing the app.",
+                            color = White,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    "BAG" -> {
+                        SectionTitle("MY BAG")
+                        InfoPanel("CLUBS", "NOT CONFIGURED")
+                        InfoPanel("DISTANCES", "NOT CONFIGURED")
+                        Text(
+                            "Editable club distances will be " +
+                                "added in a future build.",
+                            color = White,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HoleMap(
+    route: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .border(1.dp, Gold, RoundedCornerShape(12.dp))
+            .background(
+                Color(0xFF18382D),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(8.dp)
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val fairway = Path().apply {
+                moveTo(w * .39f, h * .94f)
+                cubicTo(
+                    w * .08f, h * .73f,
+                    w * .20f, h * .47f,
+                    w * .37f, h * .29f
+                )
+                cubicTo(
+                    w * .51f, h * .09f,
+                    w * .83f, h * .19f,
+                    w * .70f, h * .40f
+                )
+                cubicTo(
+                    w * .61f, h * .60f,
+                    w * .86f, h * .79f,
+                    w * .61f, h * .94f
+                )
+                close()
+            }
+
+            drawPath(fairway, Green)
+
+            drawCircle(
+                Color(0xFF79C98C),
+                radius = w * .16f,
+                center = Offset(w * .53f, h * .16f)
+            )
+
+            val path = Path().apply {
+                moveTo(w * .50f, h * .90f)
+                if (route == "SAFE") {
+                    lineTo(w * .43f, h * .65f)
+                    lineTo(w * .55f, h * .42f)
+                } else {
+                    lineTo(w * .65f, h * .58f)
+                }
+                lineTo(w * .53f, h * .16f)
+            }
+
+            drawPath(
+                path,
+                if (route == "SAFE") Yellow else Red,
+                style = Stroke(width = 5f)
+            )
+
+            drawCircle(
+                Gold,
+                radius = 7f,
+                center = Offset(w * .50f, h * .90f)
+            )
+            drawCircle(
+                White,
+                radius = 7f,
+                center = Offset(w * .53f, h * .16f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataPanels(
+    modifier: Modifier,
+    horizontal: Boolean
+) {
+    val items = listOf(
+        "GPS" to "OFFLINE",
+        "WIND" to "--",
+        "FRONT" to "-- m",
+        "CENTRE" to "-- m",
+        "BACK" to "-- m",
+        "CLUB" to "--"
+    )
+
+    if (horizontal) {
+        Column(modifier) {
+            items.chunked(3).forEach { group ->
+                Row(
+                    horizontalArrangement =
+                        Arrangement.spacedBy(5.dp),
+                    modifier = Modifier.padding(bottom = 5.dp)
+                ) {
+                    group.forEach { (name, value) ->
+                        Box(Modifier.weight(1f)) {
+                            InfoPanel(name, value)
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier,
+            verticalArrangement =
+                Arrangement.spacedBy(6.dp)
+        ) {
+            items.forEach { (name, value) ->
+                InfoPanel(name, value)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(value: String) {
+    Text(
+        value,
+        color = Gold,
+        fontSize = 20.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+private fun InfoPanel(
+    title: String,
+    value: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                1.dp,
+                Gold,
+                RoundedCornerShape(8.dp)
+            )
+            .padding(7.dp)
+    ) {
+        Text(
+            title,
+            color = Gold,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            value,
+            color = White,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ActionButton(
+    title: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    selectedColor: Color = Gold,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .background(
+                if (selected) selectedColor else Panel,
+                RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .heightIn(min = 46.dp)
+            .padding(horizontal = 5.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            title,
+            color = if (selected) Navy else White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
